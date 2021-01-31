@@ -2,18 +2,25 @@ SERVO_MAX = 575
 SERVO_MIN = 80
 
 class Joint:
-    def __init__(self, pwm, pwm_id, center, rest, min, max, degree_to_pwm_width = ((SERVO_MAX-SERVO_MIN)/180)):
+    def __init__(self, pwm, pwm_id, center, rest, min, max, disabled = False, inverted = False, degree_to_pwm_width = 2.5 ):
         self.pwm = pwm
         self.pwm_id = pwm_id
         self.center = center
         self.rest = rest
         self.min = min
         self.max = max
+        self.disabled = disabled
+        self.inverted = inverted
         self.degree_to_pwm_width = degree_to_pwm_width
-    
+
     def set_pulse_width(self, pulse_width):
-        if pulse_width > self.min and pulse_width < self.max:
-            self.pwm.set_pwm( self.pwm_id, 0, int(pulse_width) )
+        if self.disabled == False:
+            print("Trying to set pw", self.pwm_id, pulse_width)
+            if pulse_width > self.min and pulse_width < self.max:
+                print("Trying to set pw, boundaries met", self.pwm_id, pulse_width)
+                self.pwm.set_pwm( self.pwm_id, 0, int(pulse_width) )
+        else:
+            print("Motor disabled", self.pwm_id)
 
     def rest(self):
         self.set_pulse_width( self.rest )
@@ -22,13 +29,17 @@ class Joint:
         self.set_pulse_width( self.center )
 
     def set_angle_relative_from_center(self, angle):
-        angle_in_pw = SERVO_MAX - ( self.center + angle * self.degree_to_pwm_width )
+        print("Trying to set angle", self.pwm_id, angle, self.center, self.inverted)
+        if self.inverted == False:
+            angle_in_pw = self.center + ( angle * self.degree_to_pwm_width )
+        else:
+            angle_in_pw = self.center + ( -1 * angle * self.degree_to_pwm_width )
         self.set_pulse_width( angle_in_pw )
 
     def set_angle_absolute(self, angle):
-        angle_in_pw = SERVO_MAX - ( angle * self.degree_to_pwm_width )
+        angle_in_pw = ( angle * self.degree_to_pwm_width )
         self.set_pulse_width( angle_in_pw )
-        
+
 class Leg:
     def __init__(self, wrist, hip, shoulder):
         self.wrist = wrist
