@@ -1,5 +1,5 @@
 class Joint:
-    def __init__(self, pwm, pwm_id, center, rest, min, max, degree_to_pwm_width = (575-80/180)):
+    def __init__(self, pwm, pwm_id, center, rest, min, max, degree_to_pwm_width = ((575-80)/180)):
         self.pwm = pwm
         self.pwm_id = pwm_id
         self.center = center
@@ -16,7 +16,13 @@ class Joint:
 
     def angle_relative_from_center(self, angle):
         angle_in_pw = self.center + angle * self.degree_to_pwm_width
-        if angle_in_pw > min and angle_in_pw < max:
+        if angle_in_pw > self.min and angle_in_pw < self.max:
+            self.pwm.set_pwm( self.pwm_id, 0, angle_in_pw )
+
+    def setAngle(self, angle):
+        angle_in_pw = self.center + (angle * self.degree_to_pwm_width)
+        if angle_in_pw > self.min and angle_in_pw < self.max:
+            print("Setting joint to %f", angle_in_pw)
             self.pwm.set_pwm( self.pwm_id, 0, angle_in_pw )
         
 class Leg:
@@ -31,6 +37,20 @@ class Leg:
         self.wrist.rest()
         self.hip.rest()
 
+    ''' Sets the angles for this legs.
+
+        Used for interoperability with Spot Micro Python
+        Args:
+            angles: Angles in the order q1,q2,q3. (hip, leg, knee)
+                      An example output:
+                         (lb_q1,lb_q2,lb_q3)
+        Returns:
+            None
+    '''
+    def setAngles(self, angles):
+        self.shoulder.setAngle(angles[0])
+        self.hip.setAngle(angles[1])
+        self.wrist.setAngle(angles[2])
 
 class MotorControl:
     def __init__(self, left_front, left_back, right_front, right_back):
@@ -44,33 +64,26 @@ class MotorControl:
         self.left_back.rest()
         self.right_front.rest()
         self.right_back.rest()
+    
+    ''' Sets the leg angles for all four legs.
+
+        Used for interoperability with Spot Micro Python
+        Args:
+            angles: Tuple of 4 of the leg angles. Legs in the order rightback
+                      rightfront, leftfront, leftback. Angles in the order q1,q2,q3. (hip, leg, knee)
+                      An example output:
+                        ((rb_q1,rb_q2,rb_q3),
+                         (rf_q1,rf_q2,rf_q3),
+                         (lf_q1,lf_q2,lf_q3),
+                         (lb_q1,lb_q2,lb_q3))
+        Returns:
+            None
+    '''
+    def setAngles(self, angles):
+        self.right_back.setAngles(angles[0])
+        self.right_front.setAngles(angles[1])
+        self.left_front.setAngles(angles[2])
+        self.left_back.setAngles(angles[3])
 
 
 
-import Adafruit_PCA9685
-pwm = Adafruit_PCA9685.PCA9685(address=0x40)
-pwm.set_pwm_freq(SERVO_FREQ)
-
-
-control = MotorControl(
-    left_front = Leg(
-        wrist = Joint(pwm, 0, 300, 80, 80, 575),
-        hip = Joint(pwm, 1, 300, 340, 80, 575),
-        shoulder = Joint(pwm, 2, 310, 310, 80, 575),
-    ),
-    left_back = Leg(
-        wrist = Joint(pwm, 12, 300, 80, 80, 575),
-        hip = Joint(pwm, 13, 300, 300, 80, 575),
-        shoulder = Joint(pwm, 14, 315, 315,80, 575),
-    ),
-    right_front = Leg(
-        wrist = Joint(pwm, 4, 300, 510, 80, 575),
-        hip = Joint(pwm, 5, 300, 300, 80, 575),
-        shoulder = Joint(pwm, 6, 295, 295, 80, 575),
-    ),
-    right_back = Leg(
-        wrist = Joint(pwm, 8, 300, 525, 80, 575),
-        hip = Joint(pwm, 9, 300, 80, 100, 575),
-        shoulder = Joint(pwm, 10, 300, 300,80, 575),
-    )
-) 

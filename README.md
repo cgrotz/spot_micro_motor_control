@@ -19,12 +19,13 @@ control = MotorControl(
     right_front = Leg(
         wrist = Joint(pwm, 4, 300, 510, 80, 575),
         hip = Joint(pwm, 5, 300, 300, 80, 575),
-        shoulder = Joint(pwm, 6, 295, 295, 80, 575),
+        shoulder = Joint(pwm, 6, 270, 295, 80, 575),
     ),
     right_back = Leg(
         wrist = Joint(pwm, 8, 300, 525, 80, 575),
         hip = Joint(pwm, 9, 300, 80, 100, 575),
         shoulder = Joint(pwm, 10, 300, 300,80, 575),
     )
-) 
+)
+
 ```

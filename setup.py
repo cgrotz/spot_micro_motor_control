@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='Spot Micro Motor Control',
+    name='smcontrol',
     url='https://github.com/cgrotz/spot_micro_motor_control',
     author='Christoph Grotz',
     author_email='christoph.grotz@gmail.com',
