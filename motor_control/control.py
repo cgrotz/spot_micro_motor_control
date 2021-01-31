@@ -1,5 +1,8 @@
+SERVO_MAX = 575
+SERVO_MIN = 80
+
 class Joint:
-    def __init__(self, pwm, pwm_id, center, rest, min, max, degree_to_pwm_width = ((575-80)/180)):
+    def __init__(self, pwm, pwm_id, center, rest, min, max, degree_to_pwm_width = ((SERVO_MAX-SERVO_MIN)/180)):
         self.pwm = pwm
         self.pwm_id = pwm_id
         self.center = center
@@ -7,23 +10,24 @@ class Joint:
         self.min = min
         self.max = max
         self.degree_to_pwm_width = degree_to_pwm_width
+    
+    def set_pulse_width(self, pulse_width):
+        if pulse_width > self.min and pulse_width < self.max:
+            self.pwm.set_pwm( self.pwm_id, 0, int(pulse_width) )
 
     def rest(self):
-        self.pwm.set_pwm( self.pwm_id, 0, self.rest )
+        self.set_pulse_width( self.rest )
 
     def center(self):
-        self.pwm.set_pwm( self.pwm_id, 0, self.center )
+        self.set_pulse_width( self.center )
 
-    def angle_relative_from_center(self, angle):
-        angle_in_pw = self.center + angle * self.degree_to_pwm_width
-        if angle_in_pw > self.min and angle_in_pw < self.max:
-            self.pwm.set_pwm( self.pwm_id, 0, angle_in_pw )
+    def set_angle_relative_from_center(self, angle):
+        angle_in_pw = SERVO_MAX - ( self.center + angle * self.degree_to_pwm_width )
+        self.set_pulse_width( angle_in_pw )
 
-    def setAngle(self, angle):
-        angle_in_pw = self.center + (angle * self.degree_to_pwm_width)
-        if angle_in_pw > self.min and angle_in_pw < self.max:
-            print("Setting joint to %f", angle_in_pw)
-            self.pwm.set_pwm( self.pwm_id, 0, angle_in_pw )
+    def set_angle_absolute(self, angle):
+        angle_in_pw = SERVO_MAX - ( angle * self.degree_to_pwm_width )
+        self.set_pulse_width( angle_in_pw )
         
 class Leg:
     def __init__(self, wrist, hip, shoulder):
@@ -47,10 +51,10 @@ class Leg:
         Returns:
             None
     '''
-    def setAngles(self, angles):
-        self.shoulder.setAngle(angles[0])
-        self.hip.setAngle(angles[1])
-        self.wrist.setAngle(angles[2])
+    def set_angles(self, angles):
+        self.shoulder.set_angle_relative_from_center(angles[0])
+        self.hip.set_angle_relative_from_center(angles[1])
+        self.wrist.set_angle_relative_from_center(angles[2])
 
 class MotorControl:
     def __init__(self, left_front, left_back, right_front, right_back):
@@ -80,10 +84,10 @@ class MotorControl:
             None
     '''
     def setAngles(self, angles):
-        self.right_back.setAngles(angles[0])
-        self.right_front.setAngles(angles[1])
-        self.left_front.setAngles(angles[2])
-        self.left_back.setAngles(angles[3])
+        self.right_back.set_angles(angles[0])
+        self.right_front.set_angles(angles[1])
+        self.left_front.set_angles(angles[2])
+        self.left_back.set_angles(angles[3])
 
 
 
