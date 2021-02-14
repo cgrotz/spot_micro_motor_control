@@ -1,50 +1,54 @@
-SERVO_MAX = 575
-SERVO_MIN = 80
+SERVO_MAX = 570
+SERVO_MIN = 90
+
+import time
+import random
 
 class Joint:
-    def __init__(self, pwm, pwm_id, center, rest, min, max, disabled = False, inverted = False, degree_to_pwm_width = 2.5 ):
+    def __init__(self, pwm, pwm_id, min, max, disabled = False, degree_to_pwm_width = 2.5, correction = 0 ):
         self.pwm = pwm
         self.pwm_id = pwm_id
-        self.center = center
-        self.rest = rest
         self.min = min
         self.max = max
+        self.correction = correction
         self.disabled = disabled
-        self.inverted = inverted
         self.degree_to_pwm_width = degree_to_pwm_width
 
     def set_pulse_width(self, pulse_width):
         if self.disabled == False:
-            print("Trying to set pw", self.pwm_id, pulse_width)
-            if pulse_width > self.min and pulse_width < self.max:
-                print("Trying to set pw, boundaries met", self.pwm_id, pulse_width)
+            print("Trying to set pw", self.pwm_id, pulse_width, self.min, self.max)
+            if pulse_width >= self.min and pulse_width <= self.max:
                 self.pwm.set_pwm( self.pwm_id, 0, int(pulse_width) )
-        else:
-            print("Motor disabled", self.pwm_id)
-
-    def rest(self):
-        self.set_pulse_width( self.rest )
 
     def center(self):
-        self.set_pulse_width( self.center )
+        self.set_pulse_width( self.min + (90 + self.correction) * self.degree_to_pwm_width )
 
     def set_angle_relative_from_center(self, angle):
-        print("Trying to set angle", self.pwm_id, angle, self.center, self.inverted)
-        if self.inverted == False:
-            angle_in_pw = self.center + ( angle * self.degree_to_pwm_width )
-        else:
-            angle_in_pw = self.center + ( -1 * angle * self.degree_to_pwm_width )
+        print("Trying to set angle", angle)
+        angle = (angle + self.correction)
+        print("Trying to set corrected angle", angle)
+        if angle >= 0:
+            angle_in_pw = self.max - (angle * self.degree_to_pwm_width)
+        elif angle < 0:
+            angle_in_pw = angle * self.degree_to_pwm_width
+            angle_in_pw = self.min + abs(angle_in_pw)
+
         self.set_pulse_width( angle_in_pw )
 
     def set_angle_absolute(self, angle):
-        angle_in_pw = ( angle * self.degree_to_pwm_width )
+        angle = (angle + self.correction)
+        angle_in_pw = abs( angle * self.degree_to_pwm_width )
         self.set_pulse_width( angle_in_pw )
+    
+    def set_disabled(self, disabled):
+        self.disabled = disabled
 
 class Leg:
-    def __init__(self, wrist, hip, shoulder):
+    def __init__(self, wrist, hip, shoulder, shoulder_inverted = False):
         self.wrist = wrist
         self.hip = hip
         self.shoulder = shoulder
+        self.shoulder_inverted = shoulder_inverted
 
     # collisions
     def rest(self):
@@ -63,9 +67,20 @@ class Leg:
             None
     '''
     def set_angles(self, angles):
-        self.shoulder.set_angle_relative_from_center(angles[0])
+        if self.shoulder_inverted:
+            self.shoulder.set_angle_relative_from_center(90 - angles[0])
+        else:
+            self.shoulder.set_angle_relative_from_center(angles[0] - 90)
+        time.sleep(0.005)
         self.hip.set_angle_relative_from_center(angles[1])
+        time.sleep(0.005)
         self.wrist.set_angle_relative_from_center(angles[2])
+        time.sleep(0.005)
+    
+    def set_disabled(self, disabled):
+        self.shoulder.set_disabled(disabled[0])
+        self.hip.set_disabled(disabled[1])
+        self.wrist.set_disabled(disabled[2])
 
 class MotorControl:
     def __init__(self, left_front, left_back, right_front, right_back):
@@ -95,10 +110,23 @@ class MotorControl:
             None
     '''
     def setAngles(self, angles):
-        self.right_back.set_angles(angles[0])
-        self.right_front.set_angles(angles[1])
-        self.left_front.set_angles(angles[2])
-        self.left_back.set_angles(angles[3])
+        sequence = [0,1,2,3]
+        random.shuffle(sequence)
+        for leg in sequence:
+            if leg == 0:
+                self.right_back.set_angles(angles[0])
+            elif leg == 1:
+                self.right_front.set_angles(angles[1])
+            elif leg == 2:
+                self.left_front.set_angles(angles[2])
+            else:
+                self.left_back.set_angles(angles[3])
+
+    def set_disabled(self, disabled):
+        self.right_back.set_disabled(disabled[0])
+        self.right_front.set_disabled(disabled[1])
+        self.left_front.set_disabled(disabled[2])
+        self.left_back.set_disabled(disabled[3])
 
 
 
