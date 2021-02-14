@@ -3,9 +3,10 @@ SERVO_MIN = 90
 
 import time
 import random
+import RPi.GPIO as GPIO
 
 class Joint:
-    def __init__(self, pwm, pwm_id, min, max, disabled = False, degree_to_pwm_width = 2.5, correction = 0 ):
+    def __init__(self, pwm, pwm_id, min, max, disabled = False, degree_to_pwm_width = 2.5, correction = 0, debug = False ):
         self.pwm = pwm
         self.pwm_id = pwm_id
         self.min = min
@@ -13,20 +14,25 @@ class Joint:
         self.correction = correction
         self.disabled = disabled
         self.degree_to_pwm_width = degree_to_pwm_width
+        self.debug = debug
 
     def set_pulse_width(self, pulse_width):
         if self.disabled == False:
-            print("Trying to set pw", self.pwm_id, pulse_width, self.min, self.max)
+            pulse_width = abs(int(pulse_width))
+            if self.debug:
+                print("Trying to set pw", self.pwm_id, pulse_width, self.min, self.max)
             if pulse_width >= self.min and pulse_width <= self.max:
-                self.pwm.set_pwm( self.pwm_id, 0, int(pulse_width) )
+                self.pwm.set_pwm( self.pwm_id, 0, pulse_width )
 
     def center(self):
         self.set_pulse_width( self.min + (90 + self.correction) * self.degree_to_pwm_width )
 
     def set_angle_relative_from_center(self, angle):
-        print("Trying to set angle", angle)
+        if self.debug:
+            print("Trying to set angle", angle)
         angle = (angle + self.correction)
-        print("Trying to set corrected angle", angle)
+        if self.debug:
+            print("Trying to set corrected angle", angle)
         if angle >= 0:
             angle_in_pw = self.max - (angle * self.degree_to_pwm_width)
         elif angle < 0:
@@ -71,11 +77,11 @@ class Leg:
             self.shoulder.set_angle_relative_from_center(90 - angles[0])
         else:
             self.shoulder.set_angle_relative_from_center(angles[0] - 90)
-        time.sleep(0.005)
+        #time.sleep(0.005)
         self.hip.set_angle_relative_from_center(angles[1])
-        time.sleep(0.005)
+        #time.sleep(0.005)
         self.wrist.set_angle_relative_from_center(angles[2])
-        time.sleep(0.005)
+        #time.sleep(0.005)
     
     def set_disabled(self, disabled):
         self.shoulder.set_disabled(disabled[0])
@@ -83,11 +89,18 @@ class Leg:
         self.wrist.set_disabled(disabled[2])
 
 class MotorControl:
-    def __init__(self, left_front, left_back, right_front, right_back):
+    def __init__(self, left_front, left_back, right_front, right_back, relay_pin = 13):
         self.left_front = left_front
         self.left_back = left_back
         self.right_front = right_front
         self.right_back = right_back
+        self.relay_pin = relay_pin
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(relay_pin, GPIO.OUT)
+
+    def __del__(self):
+        GPIO.output(self.relay_pin, GPIO.LOW)
+        GPIO.cleanup()
 
     def rest(self):
         self.left_front.rest()
@@ -128,5 +141,10 @@ class MotorControl:
         self.left_front.set_disabled(disabled[2])
         self.left_back.set_disabled(disabled[3])
 
+    def set_motor_relay(self, state):
+        if state:
+            GPIO.output(self.relay_pin, GPIO.HIGH)
+        else:
+            GPIO.output(self.relay_pin, GPIO.LOW)
 
 
